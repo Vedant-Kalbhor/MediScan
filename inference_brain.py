@@ -4,10 +4,9 @@ from PIL import Image
 import io
 
 classes = ["glioma", "meningioma", "pituitary", "notumor"]
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Define preprocessing transform (same as training)
+# Preprocessing same as training
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -25,10 +24,15 @@ def load_model(model_path="best_brain_tumor_resnet18.pth"):
     return model
 
 def predict_image(model, image_bytes):
+    # Correctly handle bytes using BytesIO
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     img_t = transform(image).unsqueeze(0).to(device)
+
     with torch.no_grad():
         outputs = model(img_t)
-        _, preds = torch.max(outputs, 1)
+        probs = torch.nn.functional.softmax(outputs, dim=1)
+        confidence, preds = torch.max(probs, 1)
         predicted_class = classes[preds.item()]
-    return predicted_class
+        confidence = confidence.item()
+
+    return predicted_class, confidence
