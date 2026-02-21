@@ -7,16 +7,16 @@ MediScan is a comprehensive medical imaging classification project designed to p
 - **Chest Disease Classification (CT)**: Detects Adenocarcinoma, Large cell carcinoma, Squamous cell carcinoma, and Normal lungs.
 - **Breast Cancer Analysis (Ultrasound)**: Classified as Benign, Malignant, or Normal.
 - **Kidney Condition Detection (CT)**: Identifies Stones, Cysts, Tumors, or Normal kidneys.
-- **Bone Fracture Detection (X-ray)**: Quick identification of fractures in radiographs.
+<!-- - **Bone Fracture Detection (X-ray)**: Quick identification of fractures in radiographs. -->
 
 ## 📊 Datasets Used
 | Scan Type | Source Link |
 |-----------|-------------|
 | Brain MRI | [Kaggle - Brain Tumor MRI Dataset](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset) |
-| Chest CT | [Kaggle - Chest CT-Scan images](https://www.kaggle.com/datasets/mohamedhany2020/chest-ctscan-images) |
+| Chest CT | [Kaggle - Chest CT-Scan images](https://www.kaggle.com/datasets/mohamedhanyyy/chest-ctscan-images) |
 | Breast Ultrasound | [Kaggle - Breast Ultrasound Images](https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset) |
 | Kidney CT | [Kaggle - CT KIDNEY DATASET](https://www.kaggle.com/datasets/nazmul0087/ct-kidney-dataset-normal-cyst-tumor-and-stone) |
-<!-- | Bone X-ray | [Kaggle - Bone Fracture Multi-Region](https://www.kaggle.com/datasets/babban/bone-fracture-dataset-new) | -->
+<!-- | Bone X-ray | [Kaggle - Bone Fracture ](https://www.kaggle.com/datasets/babban/bone-fracture-dataset-new) | -->
 
 ## 🛠️ Tech Stack
 - **Backend**: FastAPI (Python)
