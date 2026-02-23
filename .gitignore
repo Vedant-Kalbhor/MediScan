@@ -22,3 +22,5 @@ bone_dataset/
 # OS
 .DS_Store
 Thumbs.db
+
+deployment_plan.md

@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+streamlit
+torch
+torchvision
+pillow
+requests
+python-multipart
+pydantic

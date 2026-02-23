@@ -85,10 +85,11 @@ with col2:
         if st.button("🚀 Analyze Scan"):
             files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
             params = {"model_type": model_type}
-
             with st.spinner("🤖 AI is analyzing the scan..."):
                 try:
-                    response = requests.post("http://127.0.0.1:8000/predict", files=files, params=params)
+                    import os
+                    BACKEND_URL = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+                    response = requests.post(f"{BACKEND_URL}/predict", files=files, params=params)
                     
                     if response.status_code == 200:
                         result = response.json()
