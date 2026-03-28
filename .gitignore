@@ -12,7 +12,7 @@ chest_dataset/
 breast_dataset/
 kidney_dataset/
 bone_dataset/
-# *.pth
+*.pth
 *.h5
 *.onnx
 
