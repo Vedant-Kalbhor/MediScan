@@ -1,53 +1,91 @@
-# 🩺 MediScan: AI-Powered Medical Scan Guide
+# MediScan: AI-Powered Medical Scan Guide
 
-MediScan is a comprehensive medical imaging classification project designed to provide patients with an initial automated interpretation of their medical scans (MRI, CT, X-ray, Ultrasound) before consulting a doctor.
+MediScan is a medical imaging classification project that provides an initial automated interpretation of common scans before a clinician review.
 
-## 🚀 Features
-- **Brain Tumor Detection (MRI)**: Classifies Glioma, Meningioma, Pituitary tumors, or Normal scans.
-- **Chest Disease Classification (CT)**: Detects Adenocarcinoma, Large cell carcinoma, Squamous cell carcinoma, and Normal lungs.
-- **Breast Cancer Analysis (Ultrasound)**: Classified as Benign, Malignant, or Normal.
-- **Kidney Condition Detection (CT)**: Identifies Stones, Cysts, Tumors, or Normal kidneys.
-<!-- - **Bone Fracture Detection (X-ray)**: Quick identification of fractures in radiographs. -->
+## Features
+- Brain tumor detection from MRI
+- Chest disease classification from CT
+- Breast cancer analysis from ultrasound
+- Kidney condition detection from CT
+- Bone fracture detection from X-ray
 
-## 📊 Datasets Used
+## Project Layout
+Each model now lives in its own folder with a standard layout:
+
+```text
+brain/
+  train.py
+  inference.py
+  best_brain_model.pth
+
+breast/
+  train.py
+  inference.py
+  best_breast_model.pth
+
+chest/
+  train.py
+  inference.py
+  best_chest_model.pth
+
+kidney/
+  train.py
+  inference.py
+  best_kidney_model.pth
+
+bone/
+  train.py
+  inference.py
+  best_bone_model.pth
+```
+
+## Datasets
 | Scan Type | Source Link |
 |-----------|-------------|
 | Brain MRI | [Kaggle - Brain Tumor MRI Dataset](https://www.kaggle.com/datasets/masoudnickparvar/brain-tumor-mri-dataset) |
-| Chest CT | [Kaggle - Chest CT-Scan images](https://www.kaggle.com/datasets/mohamedhanyyy/chest-ctscan-images) |
+| Chest CT | [Kaggle - Chest CT-Scan Images](https://www.kaggle.com/datasets/mohamedhanyyy/chest-ctscan-images) |
 | Breast Ultrasound | [Kaggle - Breast Ultrasound Images](https://www.kaggle.com/datasets/aryashah2k/breast-ultrasound-images-dataset) |
-| Kidney CT | [Kaggle - CT KIDNEY DATASET](https://www.kaggle.com/datasets/nazmul0087/ct-kidney-dataset-normal-cyst-tumor-and-stone) |
-<!-- | Bone X-ray | [Kaggle - Bone Fracture ](https://www.kaggle.com/datasets/babban/bone-fracture-dataset-new) | -->
+| Kidney CT | [Kaggle - CT Kidney Dataset](https://www.kaggle.com/datasets/nazmul0087/ct-kidney-dataset-normal-cyst-tumor-and-stone) |
+| Bone X-ray | [Kaggle - Bone Fracture Detection Computer Vision Project](https://www.kaggle.com/datasets/pkdarabi/bone-fracture-detection-computer-vision-project) |
 
-## 🛠️ Tech Stack
-- **Backend**: FastAPI (Python)
-- **Frontend**: Streamlit
-- **Deep Learning**: PyTorch (ResNet18)
-- **Inference**: Pillow, Torchvision
+## Tech Stack
+- FastAPI
+- Streamlit
+- PyTorch
+- Torchvision
+- Pillow
+- Requests
 
-## 🏃 How to Run
-1. **Install Dependencies**:
+## Run
+1. Install dependencies:
+
    ```bash
-   pip install fastapi uvicorn streamlit torch torchvision pillow requests
+   pip install fastapi uvicorn streamlit torch torchvision pillow requests python-multipart pydantic
    ```
-2. **Start Backend**:
+
+2. Start the backend:
+
    ```bash
    python main.py
    ```
-3. **Start Frontend**:
+
+3. Start the frontend:
+
    ```bash
    streamlit run streamlit_app.py
    ```
 
-## 🧠 Training New Models (Kaggle)
-To train models for the new categories without local storage constraints, use the respective templates provided:
-- **Breast Cancer**: Use `breast_training_template.py`
-- **Kidney Stone**: Use `kidney_training_template.py`
+## Training
+Each folder has a `train.py` script that trains a ResNet18 classifier and saves:
+- the model weights as `best_<name>_model.pth`
+- the discovered class order as `classes.json`
 
-1. Create a New Notebook on Kaggle.
-2. Add the respective dataset using the links above.
-3. Paste the training code from the template.
-4. Run the training and download the `best_model.pth` file.
-5. Place the model file in the root directory and update `config.py`.
+You can override the dataset location with environment variables:
+- `BRAIN_DATA_DIR`
+- `BREAST_DATA_DIR`
+- `CHEST_DATA_DIR`
+- `KIDNEY_DATA_DIR`
+- `BONE_DATA_DIR`
 
-## ⚠️ Disclaimer
-**MediScan is NOT a medical diagnostic tool.** The predictions are based on ML models and may contain errors. Always consult a licensed medical professional for clinical diagnosis.
+## Disclaimer
+MediScan is not a medical diagnostic tool. Always consult a licensed medical professional for diagnosis and treatment.

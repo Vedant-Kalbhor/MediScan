@@ -1,19 +1,45 @@
-import torch
-from torchvision import models, transforms
-from PIL import Image
-import io
-from config import MODELS_CONFIG, DEVICE
-import os
+"""Model manager for loading model-specific inference modules."""
+
+from importlib import util
+from pathlib import Path
+
+from config import DEVICE, MODELS_CONFIG
+
 
 class ModelManager:
     def __init__(self):
         self.models = {}
-        self.transforms = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
-        ])
+        self.modules = {}
+        self.base_dir = Path(__file__).resolve().parent
+
+    def _resolve_path(self, relative_path):
+        path = Path(relative_path)
+        if path.is_absolute():
+            return path
+        return self.base_dir / path
+
+    def _load_module(self, model_type):
+        if model_type not in MODELS_CONFIG:
+            raise ValueError(f"Unknown model type: {model_type}")
+
+        if model_type in self.modules:
+            return self.modules[model_type]
+
+        config = MODELS_CONFIG[model_type]
+        module_path = self._resolve_path(config["inference_module"])
+        if not module_path.exists():
+            print(f"Warning: inference module {module_path} not found.")
+            return None
+
+        spec = util.spec_from_file_location(f"mediscan_{model_type}_inference", module_path)
+        if spec is None or spec.loader is None:
+            print(f"Warning: could not load module spec for {module_path}.")
+            return None
+
+        module = util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        self.modules[model_type] = module
+        return module
 
     def get_model(self, model_type):
         if model_type not in MODELS_CONFIG:
@@ -23,42 +49,35 @@ class ModelManager:
             return self.models[model_type]
 
         config = MODELS_CONFIG[model_type]
-        model_path = config["model_path"]
-
-        # If model file doesn't exist, we'll return None or raise warning
-        if not os.path.exists(model_path):
-            print(f"Warning: Model file {model_path} not found. Please train/download it.")
+        module = self._load_module(model_type)
+        if module is None:
             return None
 
-        # Load ResNet18 structure (common for all these for now)
-        model = models.resnet18(weights=None)
-        num_ftrs = model.fc.in_features
-        model.fc = torch.nn.Linear(num_ftrs, len(config["classes"]))
-        
-        model.load_state_dict(torch.load(model_path, map_location=DEVICE))
-        model.to(DEVICE)
-        model.eval()
-        
+        model_path = self._resolve_path(config["model_path"])
+        if not model_path.exists():
+            print(f"Warning: model file {model_path} not found. Please train/download it.")
+            return None
+
+        model = module.load_model(model_path=str(model_path), device=DEVICE)
+        if model is None:
+            print(f"Warning: model module for {model_type} did not return a model.")
+            return None
+
         self.models[model_type] = model
         return model
 
     def predict(self, model_type, image_bytes):
+        module = self._load_module(model_type)
+        if module is None:
+            return "Model not found/loaded", 0.0
+
         model = self.get_model(model_type)
         if model is None:
             return "Model not found/loaded", 0.0
 
-        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-        img_t = self.transforms(image).unsqueeze(0).to(DEVICE)
+        predicted_class, confidence = module.predict_image(model, image_bytes, device=DEVICE)
+        return predicted_class, confidence
 
-        with torch.no_grad():
-            outputs = model(img_t)
-            probs = torch.nn.functional.softmax(outputs, dim=1)
-            confidence, preds = torch.max(probs, 1)
-            
-            config = MODELS_CONFIG[model_type]
-            predicted_class = config["classes"][preds.item()]
-            
-        return predicted_class, confidence.item()
 
 # Singleton instance
 manager = ModelManager()

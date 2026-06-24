@@ -43,6 +43,8 @@ async def predict(model_type: str, file: UploadFile = File(...)):
             scan_name=MODELS_CONFIG[model_type]["name"]
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
 

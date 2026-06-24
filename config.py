@@ -1,42 +1,56 @@
-# config.py
+"""Configuration for medical image models."""
 
-# Configuration for Medical Models
 MODELS_CONFIG = {
     "brain": {
         "name": "Brain Tumor (MRI)",
-        "model_path": "best_brain_tumor_resnet18.pth",
+        "model_path": "brain/best_brain_model.pth",
+        "train_script": "brain/train.py",
+        "inference_module": "brain/inference.py",
         "classes": ["glioma", "meningioma", "pituitary", "no tumor"],
-        "description": "Analyzes Brain MRI scans to detect different types of tumors.",
-        "input_type": "MRI Scan"
+        "normal_classes": ["no tumor"],
+        "description": "Analyzes brain MRI scans to detect tumor types.",
+        "input_type": "MRI Scan",
     },
     "chest": {
         "name": "Chest CT Scan",
-        "model_path": "best_chest_model.pth",
+        "model_path": "chest/best_chest_model.pth",
+        "train_script": "chest/train.py",
+        "inference_module": "chest/inference.py",
         "classes": ["adenocarcinoma", "large cell carcinoma", "normal", "squamous cell carcinoma"],
+        "normal_classes": ["normal"],
         "description": "Detects lung cancer types and normal chest conditions from CT scans.",
-        "input_type": "CT Scan"
+        "input_type": "CT Scan",
     },
     "breast": {
         "name": "Breast Cancer (Ultrasound)",
-        "model_path": "best_breast_model.pth",
+        "model_path": "breast/best_breast_model.pth",
+        "train_script": "breast/train.py",
+        "inference_module": "breast/inference.py",
         "classes": ["benign", "malignant", "normal"],
-        "description": "Classification of breast ultrasound images into Benign, Malignant, or Normal.",
-        "input_type": "Ultrasound"
+        "normal_classes": ["benign", "normal"],
+        "description": "Classifies breast ultrasound images as benign, malignant, or normal.",
+        "input_type": "Ultrasound",
     },
     "kidney": {
         "name": "Kidney Stone (CT)",
-        "model_path": "best_kidney_model.pth",
+        "model_path": "kidney/best_kidney_model.pth",
+        "train_script": "kidney/train.py",
+        "inference_module": "kidney/inference.py",
         "classes": ["cyst", "normal", "stone", "tumor"],
+        "normal_classes": ["normal"],
         "description": "Identifies kidney stones, cysts, and tumors from axial CT scans.",
-        "input_type": "CT Scan"
+        "input_type": "CT Scan",
     },
     "bone": {
         "name": "Bone Fracture (X-ray)",
-        "model_path": "best_bone_model.pth",
+        "model_path": "bone/best_bone_model.pth",
+        "train_script": "bone/train.py",
+        "inference_module": "bone/inference.py",
         "classes": ["fractured", "not fractured"],
-        "description": "Detects fractures in various bone X-rays.",
-        "input_type": "X-ray"
-    }
+        "normal_classes": ["not fractured"],
+        "description": "Detects fractures in bone X-ray images.",
+        "input_type": "X-ray",
+    },
 }
 
 DEVICE = "cuda" if __import__("torch").cuda.is_available() else "cpu"
