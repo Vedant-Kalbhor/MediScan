@@ -76,9 +76,19 @@ bone/
    ```
 
 ## Training
-Each folder has a `train.py` script that trains a ResNet18 classifier and saves:
-- the model weights as `best_<name>_model.pth`
+Each folder has a `train.py` script and a Kaggle-ready `train.ipynb` notebook that benchmark multiple architectures and save:
+- the best model weights as `best_<name>_model.pth`
 - the discovered class order as `classes.json`
+- benchmark results as `best_<name>_model_benchmark.csv`
+- architecture metadata as `best_<name>_model_metadata.json`
+
+The benchmark compares:
+- CNN baseline
+- ResNet50
+- EfficientNetB0
+- EfficientNetB3
+- ViT
+- optional ConvNeXt Tiny
 
 You can override the dataset location with environment variables:
 - `BRAIN_DATA_DIR`

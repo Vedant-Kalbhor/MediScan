@@ -43,12 +43,12 @@ MODELS_CONFIG = {
     },
     "bone": {
         "name": "Bone Fracture (X-ray)",
-        "model_path": "bone/best_bone_model.pth",
+        "model_path": "bone/best_bone_model.pt",
         "train_script": "bone/train.py",
         "inference_module": "bone/inference.py",
-        "classes": ["fractured", "not fractured"],
+        "classes": ["fracture", "not fractured"],
         "normal_classes": ["not fractured"],
-        "description": "Detects fractures in bone X-ray images.",
+        "description": "Detects fractures in bone X-ray images using YOLOv8.",
         "input_type": "X-ray",
     },
 }

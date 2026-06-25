@@ -11,6 +11,10 @@ from medical_training_utils import train_image_folder_classifier
 DATA_DIR = os.environ.get("CHEST_DATA_DIR", "/kaggle/input/chest-ctscan-images")
 MODEL_SAVE_NAME = Path(__file__).with_name("best_chest_model.pth")
 CLASS_NAMES_OUTPUT = Path(__file__).with_name("classes.json")
+BENCHMARK_RESULTS_OUTPUT = Path(__file__).with_name("best_chest_model_benchmark.csv")
+METADATA_OUTPUT = Path(__file__).with_name("best_chest_model_metadata.json")
+EPOCHS = int(os.getenv("EPOCHS", "5"))
+BATCH_SIZE = int(os.getenv("BATCH_SIZE", "16"))
 
 
 def main():
@@ -18,6 +22,11 @@ def main():
         data_dir=DATA_DIR,
         model_save_name=MODEL_SAVE_NAME,
         class_names_output=CLASS_NAMES_OUTPUT,
+        benchmark_results_output=BENCHMARK_RESULTS_OUTPUT,
+        metadata_output=METADATA_OUTPUT,
+        batch_size=BATCH_SIZE,
+        epochs=EPOCHS,
+        include_optional=True,
     )
 
 
