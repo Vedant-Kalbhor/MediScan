@@ -1,0 +1,5 @@
+Model,Validation Accuracy,Precision,Recall,Macro F1,Training Time (s),Total Params,Trainable Params
+efficientnetv2_b0,0.5417,0.6696,0.5811,0.5216,599.93,5863828,5124
+cnn,0.5,0.5931,0.5137,0.471,56.19,390404,390404
+mobilenetv3,0.5,0.3975,0.5032,0.4076,782.81,4207156,5124
+resnet18,0.3194,0.4788,0.3147,0.2885,40.26,11178564,2052
