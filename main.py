@@ -1,14 +1,16 @@
 from datetime import datetime
 import csv
 import io
+import time
 
-from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Request, BackgroundTasks
 from fastapi.responses import Response
 from pydantic import BaseModel
 import uvicorn
 from model_manager import manager
 from config import MODELS_CONFIG
 from database import init_db, log_prediction, fetch_recent_predictions
+from monitoring import metrics_response, start_background_metrics, track_request
 
 app = FastAPI(
     title="MediScan API",
@@ -34,14 +36,37 @@ class PredictionRecord(BaseModel):
 @app.on_event("startup")
 def on_startup():
     init_db()
+    start_background_metrics()
+
+
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    status_code = 500
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    except Exception:
+        status_code = 500
+        raise
+    finally:
+        duration = time.perf_counter() - start
+        track_request(request, status_code, duration)
 
 @app.get("/models")
 async def list_models():
     """Returns a list of available models and their descriptions."""
     return {k: v["name"] for k, v in MODELS_CONFIG.items()}
 
+
+@app.get("/metrics")
+def metrics():
+    """Prometheus scrape endpoint."""
+    return metrics_response()
+
 @app.post("/predict", response_model=PredictionResponse)
-async def predict(model_type: str, file: UploadFile = File(...)):
+async def predict(background_tasks: BackgroundTasks, model_type: str, file: UploadFile = File(...)):
     if model_type not in MODELS_CONFIG:
         raise HTTPException(status_code=400, detail=f"Invalid model_type. Choose from: {list(MODELS_CONFIG.keys())}")
 
@@ -55,7 +80,8 @@ async def predict(model_type: str, file: UploadFile = File(...)):
         if predicted_class == "Model not found/loaded":
             raise HTTPException(status_code=503, detail="Model weights not found on server. Please train the model.")
 
-        log_prediction(
+        background_tasks.add_task(
+            log_prediction,
             organ=model_type,
             prediction=predicted_class,
             confidence=confidence,

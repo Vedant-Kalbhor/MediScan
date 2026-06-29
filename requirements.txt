@@ -13,6 +13,8 @@ matplotlib
 seaborn
 SQLAlchemy
 psycopg2-binary
+prometheus-client
+psutil
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
 torchvision

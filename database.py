@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Iterator, List, Optional
 
 from sqlalchemy import DateTime, Float, Integer, String, create_engine, desc, func
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 
@@ -47,6 +47,10 @@ class PredictionLog(Base):
 engine_kwargs = {"future": True}
 if DATABASE_URL.startswith("sqlite"):
     engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    # Keep hosted deployments responsive if a Postgres connection is slow or unavailable.
+    engine_kwargs["connect_args"] = {"connect_timeout": 5}
+    engine_kwargs["pool_pre_ping"] = True
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(
@@ -99,16 +103,20 @@ def log_prediction(organ: str, prediction: str, confidence: float) -> Optional[P
             session.flush()
             session.refresh(row)
             return row
-    except SQLAlchemyError as exc:
+    except (SQLAlchemyError, OperationalError) as exc:
         print(f"Warning: failed to log prediction to database: {exc}")
         return None
 
 
 def fetch_recent_predictions(limit: int = 50) -> List[PredictionLog]:
-    with get_session() as session:
-        return (
-            session.query(PredictionLog)
-            .order_by(desc(PredictionLog.timestamp))
-            .limit(limit)
-            .all()
-        )
+    try:
+        with get_session() as session:
+            return (
+                session.query(PredictionLog)
+                .order_by(desc(PredictionLog.timestamp))
+                .limit(limit)
+                .all()
+            )
+    except (SQLAlchemyError, OperationalError) as exc:
+        print(f"Warning: failed to fetch recent predictions: {exc}")
+        return []

@@ -56,6 +56,8 @@ bone/
 - Pillow
 - Requests
 - MLflow
+- Prometheus Client
+- psutil
 
 ## Run
 1. Install dependencies:
@@ -166,6 +168,30 @@ Useful endpoints:
 - `POST /predict` stores each prediction automatically
 - `GET /predictions?limit=50` returns recent records for analytics dashboards
 - `GET /predictions/export?limit=500` downloads CSV for spreadsheet analysis
+
+## Phase 10: Monitoring
+The project now exposes Prometheus metrics and ships Grafana dashboards for local monitoring.
+
+Tracked metrics:
+- API latency
+- request count
+- process memory
+- process CPU
+- system memory
+- system CPU
+
+Local endpoints:
+- Prometheus: [http://localhost:9090](http://localhost:9090)
+- Grafana: [http://localhost:3000](http://localhost:3000)
+
+Grafana login:
+- username: `admin`
+- password: `admin`
+
+Dashboard:
+- `MediScan Monitoring`
+
+The backend exposes metrics at `GET /metrics`, and Docker Compose provisions Prometheus and Grafana automatically.
 
 ## Local Data Viewing
 You can inspect the stored prediction table locally in a few ways:

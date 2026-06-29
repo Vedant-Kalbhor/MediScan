@@ -1,16 +1,4 @@
-import io
-import torch
-import torch.nn as nn
-import torchvision.models as models
-import timm
-from PIL import Image
-from torchvision import transforms
 from pathlib import Path
-
-try:
-    from ultralytics import YOLO
-except ImportError:
-    YOLO = None
 
 from config import DEVICE, MODELS_CONFIG
 
@@ -41,6 +29,21 @@ class ModelManager:
         print(f"Loading model: {model_type} from {model_path}...")
         
         try:
+            import io
+            import torch
+            import torch.nn as nn
+            import torchvision.models as models
+            import timm
+
+            from PIL import Image
+
+            from torchvision import transforms
+
+            try:
+                from ultralytics import YOLO
+            except ImportError:
+                YOLO = None
+
             if model_type == "brain":
                 # DenseNet121
                 model = models.densenet121()
@@ -102,10 +105,17 @@ class ModelManager:
         config = MODELS_CONFIG[model_type]
         
         try:
+            import io
+            import torch
+            from PIL import Image
+            from torchvision import transforms
+
+            device = torch.device(DEVICE if DEVICE == "cpu" else ("cuda" if torch.cuda.is_available() else "cpu"))
+
             if model_type == "bone":
                 # YOLO prediction logic
                 image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-                device_str = "cpu" if str(DEVICE) == "cpu" else "0" if "cuda" in str(DEVICE) else None
+                device_str = "cpu" if str(device) == "cpu" else "0" if "cuda" in str(device) else None
                 results = model.predict(source=image, device=device_str, verbose=False)
                 
                 if not results or len(results[0].boxes) == 0:
@@ -133,7 +143,7 @@ class ModelManager:
                     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
                 ])
                 image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
-                tensor = transform(image).unsqueeze(0).to(DEVICE)
+                tensor = transform(image).unsqueeze(0).to(device)
                 
                 with torch.no_grad():
                     outputs = model(tensor)

@@ -1,5 +1,8 @@
 """Configuration for medical image models."""
 
+import os
+
+
 MODELS_CONFIG = {
     "brain": {
         "name": "Brain Tumor (MRI)",
@@ -53,4 +56,6 @@ MODELS_CONFIG = {
     },
 }
 
-DEVICE = "cuda" if __import__("torch").cuda.is_available() else "cpu"
+# Keep startup light on hosted platforms by avoiding a torch import at module load.
+# The inference code resolves the actual device when it needs to run a model.
+DEVICE = os.getenv("MEDISCAN_DEVICE", "cpu")
