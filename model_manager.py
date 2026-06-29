@@ -1,15 +1,22 @@
-"""Model manager for loading model-specific inference modules."""
-
-from importlib import util
+import io
+import torch
+import torch.nn as nn
+import torchvision.models as models
+import timm
+from PIL import Image
+from torchvision import transforms
 from pathlib import Path
 
-from config import DEVICE, MODELS_CONFIG
+try:
+    from ultralytics import YOLO
+except ImportError:
+    YOLO = None
 
+from config import DEVICE, MODELS_CONFIG
 
 class ModelManager:
     def __init__(self):
         self.models = {}
-        self.modules = {}
         self.base_dir = Path(__file__).resolve().parent
 
     def _resolve_path(self, relative_path):
@@ -17,29 +24,6 @@ class ModelManager:
         if path.is_absolute():
             return path
         return self.base_dir / path
-
-    def _load_module(self, model_type):
-        if model_type not in MODELS_CONFIG:
-            raise ValueError(f"Unknown model type: {model_type}")
-
-        if model_type in self.modules:
-            return self.modules[model_type]
-
-        config = MODELS_CONFIG[model_type]
-        module_path = self._resolve_path(config["inference_module"])
-        if not module_path.exists():
-            print(f"Warning: inference module {module_path} not found.")
-            return None
-
-        spec = util.spec_from_file_location(f"mediscan_{model_type}_inference", module_path)
-        if spec is None or spec.loader is None:
-            print(f"Warning: could not load module spec for {module_path}.")
-            return None
-
-        module = util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        self.modules[model_type] = module
-        return module
 
     def get_model(self, model_type):
         if model_type not in MODELS_CONFIG:
@@ -49,35 +33,120 @@ class ModelManager:
             return self.models[model_type]
 
         config = MODELS_CONFIG[model_type]
-        module = self._load_module(model_type)
-        if module is None:
-            return None
-
         model_path = self._resolve_path(config["model_path"])
         if not model_path.exists():
-            print(f"Warning: model file {model_path} not found. Please train/download it.")
+            print(f"Warning: model file {model_path} not found.")
             return None
 
-        model = module.load_model(model_path=str(model_path), device=DEVICE)
-        if model is None:
-            print(f"Warning: model module for {model_type} did not return a model.")
+        print(f"Loading model: {model_type} from {model_path}...")
+        
+        try:
+            if model_type == "brain":
+                # DenseNet121
+                model = models.densenet121()
+                model.classifier = nn.Linear(model.classifier.in_features, len(config["classes"]))
+                state_dict = torch.load(model_path, map_location=DEVICE)
+                model.load_state_dict(state_dict)
+                model.to(DEVICE)
+                model.eval()
+                self.models[model_type] = model
+                
+            elif model_type == "breast":
+                # ResNet18
+                model = models.resnet18()
+                model.fc = nn.Linear(model.fc.in_features, len(config["classes"]))
+                state_dict = torch.load(model_path, map_location=DEVICE)
+                model.load_state_dict(state_dict)
+                model.to(DEVICE)
+                model.eval()
+                self.models[model_type] = model
+                
+            elif model_type == "chest":
+                # tf_efficientnetv2_b0
+                model = timm.create_model('tf_efficientnetv2_b0', pretrained=False, num_classes=len(config["classes"]))
+                state_dict = torch.load(model_path, map_location=DEVICE)
+                model.load_state_dict(state_dict)
+                model.to(DEVICE)
+                model.eval()
+                self.models[model_type] = model
+                
+            elif model_type == "kidney":
+                # ResNet18
+                model = models.resnet18()
+                model.fc = nn.Linear(model.fc.in_features, len(config["classes"]))
+                state_dict = torch.load(model_path, map_location=DEVICE)
+                model.load_state_dict(state_dict)
+                model.to(DEVICE)
+                model.eval()
+                self.models[model_type] = model
+                
+            elif model_type == "bone":
+                # YOLOv8
+                if YOLO is None:
+                    print("Warning: ultralytics is not installed.")
+                    return None
+                model = YOLO(str(model_path))
+                self.models[model_type] = model
+                
+        except Exception as e:
+            print(f"Error loading model {model_type}: {e}")
             return None
-
-        self.models[model_type] = model
-        return model
+            
+        return self.models.get(model_type)
 
     def predict(self, model_type, image_bytes):
-        module = self._load_module(model_type)
-        if module is None:
-            return "Model not found/loaded", 0.0
-
         model = self.get_model(model_type)
         if model is None:
             return "Model not found/loaded", 0.0
 
-        predicted_class, confidence = module.predict_image(model, image_bytes, device=DEVICE)
-        return predicted_class, confidence
-
+        config = MODELS_CONFIG[model_type]
+        
+        try:
+            if model_type == "bone":
+                # YOLO prediction logic
+                image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+                device_str = "cpu" if str(DEVICE) == "cpu" else "0" if "cuda" in str(DEVICE) else None
+                results = model.predict(source=image, device=device_str, verbose=False)
+                
+                if not results or len(results[0].boxes) == 0:
+                    return "not fractured", 0.99
+                    
+                boxes = results[0].boxes
+                best_conf = 0.0
+                best_class_idx = 0
+                
+                for box in boxes:
+                    conf = float(box.conf[0])
+                    cls = int(box.cls[0])
+                    if conf > best_conf:
+                        best_conf = conf
+                        best_class_idx = cls
+                        
+                class_name = model.names[best_class_idx]
+                return class_name, best_conf
+                
+            else:
+                # Classification prediction logic
+                transform = transforms.Compose([
+                    transforms.Resize((224, 224)),
+                    transforms.ToTensor(),
+                    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+                ])
+                image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+                tensor = transform(image).unsqueeze(0).to(DEVICE)
+                
+                with torch.no_grad():
+                    outputs = model(tensor)
+                    probs = torch.nn.functional.softmax(outputs, dim=1)
+                    confidence, preds = torch.max(probs, 1)
+                    
+                classes = config["classes"]
+                predicted_class = classes[preds.item()]
+                return predicted_class, confidence.item()
+                
+        except Exception as e:
+            print(f"Error running prediction for {model_type}: {e}")
+            return "Inference error", 0.0
 
 # Singleton instance
 manager = ModelManager()

@@ -1,6 +1,19 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16
+    container_name: mediscan-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: mediscan
+      POSTGRES_USER: mediscan
+      POSTGRES_PASSWORD: mediscan
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
   backend:
     build:
       context: .
@@ -10,8 +23,11 @@ services:
       - "8000:8000"
     volumes:
       - ./*.pth:/app/ # Mounting local .pth files for easier updating if needed
+    depends_on:
+      - postgres
     environment:
       - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql+psycopg2://mediscan:mediscan@postgres:5432/mediscan
     restart: always
 
   frontend:
@@ -27,3 +43,6 @@ services:
       - BACKEND_URL=http://backend:8000
       - PYTHONUNBUFFERED=1
     restart: always
+
+volumes:
+  postgres_data:

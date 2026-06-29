@@ -16,7 +16,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application files
-COPY main.py config.py model_manager.py ./
+COPY main.py config.py model_manager.py database.py ./
 COPY *.pth ./
 
 # Expose port

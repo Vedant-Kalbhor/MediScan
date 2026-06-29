@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS prediction_logs (
+    id BIGSERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    organ VARCHAR(50) NOT NULL,
+    prediction VARCHAR(255) NOT NULL,
+    confidence DOUBLE PRECISION NOT NULL
+);

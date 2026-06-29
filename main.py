@@ -1,8 +1,14 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from datetime import datetime
+import csv
+import io
+
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query
+from fastapi.responses import Response
 from pydantic import BaseModel
 import uvicorn
 from model_manager import manager
 from config import MODELS_CONFIG
+from database import init_db, log_prediction, fetch_recent_predictions
 
 app = FastAPI(
     title="MediScan API",
@@ -15,6 +21,19 @@ class PredictionResponse(BaseModel):
     confidence: float
     model_used: str
     scan_name: str
+
+
+class PredictionRecord(BaseModel):
+    id: int
+    timestamp: datetime
+    organ: str
+    prediction: str
+    confidence: float
+
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 @app.get("/models")
 async def list_models():
@@ -36,6 +55,12 @@ async def predict(model_type: str, file: UploadFile = File(...)):
         if predicted_class == "Model not found/loaded":
             raise HTTPException(status_code=503, detail="Model weights not found on server. Please train the model.")
 
+        log_prediction(
+            organ=model_type,
+            prediction=predicted_class,
+            confidence=confidence,
+        )
+
         return PredictionResponse(
             predicted_class=predicted_class,
             confidence=confidence,
@@ -47,6 +72,45 @@ async def predict(model_type: str, file: UploadFile = File(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
+
+
+@app.get("/predictions", response_model=list[PredictionRecord])
+def list_predictions(limit: int = Query(50, ge=1, le=500)):
+    """Return recent stored predictions for analytics and dashboards."""
+    rows = fetch_recent_predictions(limit=limit)
+    return [
+        {
+            "id": row.id,
+            "timestamp": row.timestamp,
+            "organ": row.organ,
+            "prediction": row.prediction,
+            "confidence": row.confidence,
+        }
+        for row in rows
+    ]
+
+
+@app.get("/predictions/export")
+def export_predictions_csv(limit: int = Query(500, ge=1, le=5000)):
+    """Export recent predictions as CSV for analytics or spreadsheet work."""
+    rows = fetch_recent_predictions(limit=limit)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(["id", "timestamp", "organ", "prediction", "confidence"])
+    for row in rows:
+        writer.writerow([
+            row.id,
+            row.timestamp.isoformat() if row.timestamp else "",
+            row.organ,
+            row.prediction,
+            row.confidence,
+        ])
+
+    buffer.seek(0)
+    headers = {
+        "Content-Disposition": 'attachment; filename="mediscan_predictions.csv"'
+    }
+    return Response(content=buffer.getvalue(), media_type="text/csv", headers=headers)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

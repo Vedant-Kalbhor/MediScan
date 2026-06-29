@@ -19,6 +19,8 @@ bone_dataset/
 
 # Streamlit
 .streamlit/
+mlruns/
+mediscan.db
 
 # OS
 .DS_Store
