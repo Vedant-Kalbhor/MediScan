@@ -59,3 +59,22 @@ MODELS_CONFIG = {
 # Keep startup light on hosted platforms by avoiding a torch import at module load.
 # The inference code resolves the actual device when it needs to run a model.
 DEVICE = os.getenv("MEDISCAN_DEVICE", "cpu")
+
+# Optional external URLs for downloading model weights when they are not baked into the repo.
+# Example:
+#   BRAIN_MODEL_URL=https://...
+#   BREAST_MODEL_URL=https://...
+#   CHEST_MODEL_URL=https://...
+#   KIDNEY_MODEL_URL=https://...
+#   BONE_MODEL_URL=https://...
+MODEL_URL_ENV_MAP = {
+    "brain": "BRAIN_MODEL_URL",
+    "breast": "BREAST_MODEL_URL",
+    "chest": "CHEST_MODEL_URL",
+    "kidney": "KIDNEY_MODEL_URL",
+    "bone": "BONE_MODEL_URL",
+}
+
+# Temporary hosted source for the kidney model while it lives on Hugging Face.
+# Render will download this file on first use if the local weight file is missing.
+KIDNEY_MODEL_URL = "https://huggingface.co/vedk08/saved_kidney_model/resolve/main/best_kidney_model.pth"

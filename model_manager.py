@@ -1,6 +1,10 @@
 from pathlib import Path
+import os
+import shutil
+import tempfile
+from urllib.request import urlopen
 
-from config import DEVICE, MODELS_CONFIG
+from config import DEVICE, MODELS_CONFIG, MODEL_URL_ENV_MAP, KIDNEY_MODEL_URL
 
 class ModelManager:
     def __init__(self):
@@ -13,6 +17,41 @@ class ModelManager:
             return path
         return self.base_dir / path
 
+    def _download_file(self, url: str, destination: Path) -> bool:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        tmp_fd, tmp_name = tempfile.mkstemp(suffix=destination.suffix, dir=str(destination.parent))
+        try:
+            with os.fdopen(tmp_fd, "wb") as tmp_file:
+                with urlopen(url) as response:
+                    shutil.copyfileobj(response, tmp_file)
+            Path(tmp_name).replace(destination)
+            return True
+        except Exception as exc:
+            print(f"Warning: failed to download model from {url}: {exc}")
+            try:
+                Path(tmp_name).unlink(missing_ok=True)
+            except Exception:
+                pass
+            return False
+
+    def ensure_model_file(self, model_type):
+        config = MODELS_CONFIG[model_type]
+        model_path = self._resolve_path(config["model_path"])
+        if model_path.exists():
+            return model_path
+
+        url_env = MODEL_URL_ENV_MAP.get(model_type)
+        default_url = KIDNEY_MODEL_URL if model_type == "kidney" else ""
+        model_url = os.getenv(url_env, default_url) if url_env else default_url
+        if not model_url:
+            print(f"Warning: model file {model_path} not found and {url_env} is not set.")
+            return None
+
+        print(f"Downloading model for {model_type} from {model_url} to {model_path}...")
+        if self._download_file(model_url, model_path):
+            return model_path
+        return None
+
     def get_model(self, model_type):
         if model_type not in MODELS_CONFIG:
             raise ValueError(f"Unknown model type: {model_type}")
@@ -21,9 +60,8 @@ class ModelManager:
             return self.models[model_type]
 
         config = MODELS_CONFIG[model_type]
-        model_path = self._resolve_path(config["model_path"])
-        if not model_path.exists():
-            print(f"Warning: model file {model_path} not found.")
+        model_path = self.ensure_model_file(model_type)
+        if model_path is None:
             return None
 
         print(f"Loading model: {model_type} from {model_path}...")
