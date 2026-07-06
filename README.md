@@ -55,9 +55,6 @@ bone/
 - Torchvision
 - Pillow
 - Requests
-- MLflow
-- Prometheus Client
-- psutil
 
 ## Run
 1. Install dependencies:
@@ -88,10 +85,9 @@ Each folder has a `train.py` script and a Kaggle-ready `train.ipynb` notebook th
 The benchmark compares:
 - CNN baseline
 - ResNet50
-- EfficientNetB0
-- EfficientNetB3
-- ViT
-- optional ConvNeXt Tiny
+- DenseNet
+- MobileNetV3
+
 
 You can override the dataset location with environment variables:
 - `BRAIN_DATA_DIR`
@@ -100,51 +96,7 @@ You can override the dataset location with environment variables:
 - `KIDNEY_DATA_DIR`
 - `BONE_DATA_DIR`
 
-## Phase 4: MLflow Experiment Tracking
-Yes, MLflow fits this project well for the training side.
-
-Use it to track every benchmark run and keep the interview-friendly structure:
-
-```text
-MediScan
-  Run1
-  Run2
-  Run3
-```
-
-Track these items per run:
-- learning rate
-- optimizer
-- batch size
-- accuracy
-- F1 score
-- confusion matrix
-
-The repo now includes [`mlflow_utils.py`](./mlflow_utils.py), a small helper you can import from any training notebook or future `train.py` script.
-
-Example usage:
-
-```python
-from mlflow_utils import start_run, log_classification_report, log_confusion_matrix
-
-with start_run(
-    run_name="Run1",
-    experiment_name="MediScan",
-    tags={"model": "densenet121", "organ": "brain"},
-):
-    log_classification_report(
-        accuracy=0.80,
-        f1_score=0.79,
-        optimizer="Adam",
-        learning_rate=1e-4,
-        batch_size=32,
-    )
-    log_confusion_matrix(y_true, y_pred, class_names)
-```
-
-MLflow artifacts are stored locally in `./mlruns/` by default.
-
-## Phase 8: Database Prediction Storage
+## Phase 4: Database Prediction Storage
 Yes, PostgreSQL fits this project well for storing inference history and analytics.
 
 The backend now saves every successful prediction into a `prediction_logs` table with:
@@ -168,30 +120,6 @@ Useful endpoints:
 - `POST /predict` stores each prediction automatically
 - `GET /predictions?limit=50` returns recent records for analytics dashboards
 - `GET /predictions/export?limit=500` downloads CSV for spreadsheet analysis
-
-## Phase 10: Monitoring
-The project now exposes Prometheus metrics and ships Grafana dashboards for local monitoring.
-
-Tracked metrics:
-- API latency
-- request count
-- process memory
-- process CPU
-- system memory
-- system CPU
-
-Local endpoints:
-- Prometheus: [http://localhost:9090](http://localhost:9090)
-- Grafana: [http://localhost:3000](http://localhost:3000)
-
-Grafana login:
-- username: `admin`
-- password: `admin`
-
-Dashboard:
-- `MediScan Monitoring`
-
-The backend exposes metrics at `GET /metrics`, and Docker Compose provisions Prometheus and Grafana automatically.
 
 ## Local Data Viewing
 You can inspect the stored prediction table locally in a few ways:
