@@ -138,7 +138,7 @@ class ModelManager:
     def predict(self, model_type, image_bytes):
         model = self.get_model(model_type)
         if model is None:
-            return "Model not found/loaded", 0.0
+            return "Model not found/loaded", 0.0, None
 
         config = MODELS_CONFIG[model_type]
         
@@ -150,28 +150,77 @@ class ModelManager:
 
             device = torch.device(DEVICE if DEVICE == "cpu" else ("cuda" if torch.cuda.is_available() else "cpu"))
 
+            def _resolve_name(class_index):
+                names = getattr(model, "names", {})
+                if isinstance(names, dict):
+                    return names.get(class_index, str(class_index))
+                if isinstance(names, (list, tuple)) and 0 <= class_index < len(names):
+                    return names[class_index]
+                return str(class_index)
+
+            def _image_region(center_x, center_y, image_width, image_height):
+                if image_width <= 0 or image_height <= 0:
+                    return "unknown"
+
+                col = "left" if center_x < image_width / 3 else "center" if center_x < (2 * image_width / 3) else "right"
+                row = "upper" if center_y < image_height / 3 else "middle" if center_y < (2 * image_height / 3) else "lower"
+
+                if row == "middle" and col == "center":
+                    return "center"
+                return f"{row}-{col}"
+
             if model_type == "bone":
                 # YOLO prediction logic
                 image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+                image_width, image_height = image.size
                 device_str = "cpu" if str(device) == "cpu" else "0" if "cuda" in str(device) else None
                 results = model.predict(source=image, device=device_str, verbose=False)
                 
                 if not results or len(results[0].boxes) == 0:
-                    return "not fractured", 0.99
+                    return "not fractured", 0.99, {
+                        "fracture_detected": False,
+                        "image_size": {"width": image_width, "height": image_height},
+                        "detections": [],
+                    }
                     
                 boxes = results[0].boxes
                 best_conf = 0.0
                 best_class_idx = 0
+                detections = []
                 
                 for box in boxes:
                     conf = float(box.conf[0])
                     cls = int(box.cls[0])
+                    x1, y1, x2, y2 = [float(v) for v in box.xyxy[0].tolist()]
+                    center_x = (x1 + x2) / 2.0
+                    center_y = (y1 + y2) / 2.0
+                    class_name = _resolve_name(cls)
+                    detections.append({
+                        "class_name": class_name,
+                        "confidence": conf,
+                        "box": {
+                            "x1": x1,
+                            "y1": y1,
+                            "x2": x2,
+                            "y2": y2,
+                        },
+                        "center": {
+                            "x": center_x,
+                            "y": center_y,
+                        },
+                        "image_region": _image_region(center_x, center_y, image_width, image_height),
+                    })
                     if conf > best_conf:
                         best_conf = conf
                         best_class_idx = cls
                         
-                class_name = model.names[best_class_idx]
-                return class_name, best_conf
+                class_name = _resolve_name(best_class_idx)
+                return class_name, best_conf, {
+                    "fracture_detected": True,
+                    "image_size": {"width": image_width, "height": image_height},
+                    "detections": detections,
+                    "best_detection": max(detections, key=lambda item: item["confidence"]) if detections else None,
+                }
                 
             else:
                 # Classification prediction logic
@@ -190,11 +239,11 @@ class ModelManager:
                     
                 classes = config["classes"]
                 predicted_class = classes[preds.item()]
-                return predicted_class, confidence.item()
+                return predicted_class, confidence.item(), None
                 
         except Exception as e:
             print(f"Error running prediction for {model_type}: {e}")
-            return "Inference error", 0.0
+            return "Inference error", 0.0, None
 
 # Singleton instance
 manager = ModelManager()

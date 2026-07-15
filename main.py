@@ -2,6 +2,7 @@ from datetime import datetime
 import csv
 import io
 import time
+from typing import Any, Optional
 
 from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Request, BackgroundTasks
 from fastapi.responses import Response
@@ -22,6 +23,7 @@ class PredictionResponse(BaseModel):
     confidence: float
     model_used: str
     scan_name: str
+    details: Optional[dict[str, Any]] = None
 
 
 class PredictionRecord(BaseModel):
@@ -52,7 +54,7 @@ async def predict(background_tasks: BackgroundTasks, model_type: str, file: Uplo
 
     try:
         img_bytes = await file.read()
-        predicted_class, confidence = manager.predict(model_type, img_bytes)
+        predicted_class, confidence, details = manager.predict(model_type, img_bytes)
 
         if predicted_class == "Model not found/loaded":
             raise HTTPException(status_code=503, detail="Model weights not found on server. Please train the model.")
@@ -68,7 +70,8 @@ async def predict(background_tasks: BackgroundTasks, model_type: str, file: Uplo
             predicted_class=predicted_class,
             confidence=confidence,
             model_used=model_type,
-            scan_name=MODELS_CONFIG[model_type]["name"]
+            scan_name=MODELS_CONFIG[model_type]["name"],
+            details=details,
         )
 
     except HTTPException:

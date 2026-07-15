@@ -51,7 +51,7 @@ MODELS_CONFIG = {
         "inference_module": "bone/inference.py",
         "classes": ["fracture", "not fractured"],
         "normal_classes": ["not fractured"],
-        "description": "Detects fractures in bone X-ray images using YOLOv8.",
+        "description": "Detects fractures in bone X-ray images using YOLOv8 and reports bounding-box location.",
         "input_type": "X-ray",
     },
 }

@@ -1,9 +1,10 @@
+import io
 import os
 import re
 import requests
 import pandas as pd
 import streamlit as st
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 # Import models configuration
 from config import MODELS_CONFIG
@@ -211,6 +212,39 @@ def fetch_predictions(backend_url, limit=100):
     return response.json()
 
 
+def draw_bone_detections(image, detections):
+    annotated = image.copy().convert("RGB")
+    draw = ImageDraw.Draw(annotated)
+
+    try:
+        font = ImageFont.truetype("arial.ttf", 18)
+    except Exception:
+        font = ImageFont.load_default()
+
+    for detection in detections:
+        box = detection.get("box", {})
+        x1 = float(box.get("x1", 0))
+        y1 = float(box.get("y1", 0))
+        x2 = float(box.get("x2", 0))
+        y2 = float(box.get("y2", 0))
+        label = detection.get("class_name", "fracture")
+        confidence = detection.get("confidence", 0.0)
+        region = detection.get("image_region", "unknown")
+        caption = f"{label} {confidence:.2f} | {region}"
+
+        draw.rectangle([x1, y1, x2, y2], outline="#EF4444", width=4)
+
+        text_bbox = draw.textbbox((0, 0), caption, font=font)
+        text_w = text_bbox[2] - text_bbox[0]
+        text_h = text_bbox[3] - text_bbox[1]
+        text_x = max(0, x1)
+        text_y = max(0, y1 - text_h - 8)
+        draw.rectangle([text_x, text_y, text_x + text_w + 10, text_y + text_h + 6], fill="#111827")
+        draw.text((text_x + 5, text_y + 3), caption, fill="#FFFFFF", font=font)
+
+    return annotated
+
+
 def render_dashboard(backend_url):
     st.markdown("## 📊 Prediction Analytics Dashboard")
     st.caption("View stored prediction history coming from PostgreSQL.")
@@ -295,7 +329,7 @@ use_cases = [
     {"key": "chest", "emoji": "🫁", "name": "Chest CT", "arch": "EfficientNetV2", "desc": "Adenocarcinoma, Large Cell, Squamous, Normal"},
     {"key": "breast", "emoji": "🎀", "name": "Breast Ultrasound", "arch": "ResNet18", "desc": "Benign, Malignant, Normal"},
     {"key": "kidney", "emoji": "🧼", "name": "Kidney CT", "arch": "ResNet18", "desc": "Cyst, Stone, Tumor, Normal"},
-    {"key": "bone", "emoji": "🦴", "name": "Bone X-ray", "arch": "YOLOv8", "desc": "Fracture Detection"}
+    {"key": "bone", "emoji": "🦴", "name": "Bone X-ray", "arch": "YOLOv8", "desc": "Fracture Detection + Localization"}
 ]
 
 # Set active usecase via Session State
@@ -404,6 +438,7 @@ with col2:
                         predicted_class = result["predicted_class"]
                         pretty_prediction = pretty_label(predicted_class)
                         confidence_pct = result["confidence"] * 100
+                        details = result.get("details") or {}
                         
                         # Set prediction color based on abnormality
                         is_normal = is_normal_prediction(model_type, predicted_class)
@@ -420,6 +455,34 @@ with col2:
     
 </div>
 """, unsafe_allow_html=True)
+                        
+                        if model_type == "bone" and details:
+                            detections = details.get("detections", [])
+                            if detections:
+                                best_detection = details.get("best_detection") or max(
+                                    detections, key=lambda item: item.get("confidence", 0.0)
+                                )
+                                region = best_detection.get("image_region", "unknown")
+                                box = best_detection.get("box", {})
+                                st.markdown("#### Fracture Location")
+                                st.success(
+                                    f"Detected fracture in the **{region}** of the X-ray "
+                                    f"at confidence **{best_detection.get('confidence', 0.0) * 100:.1f}%**."
+                                )
+                                st.caption(
+                                    "Bounding box: "
+                                    f"x1={box.get('x1', 0):.1f}, y1={box.get('y1', 0):.1f}, "
+                                    f"x2={box.get('x2', 0):.1f}, y2={box.get('y2', 0):.1f}"
+                                )
+
+                                try:
+                                    image_for_overlay = Image.open(io.BytesIO(uploaded_file.getvalue())).convert("RGB")
+                                    annotated = draw_bone_detections(image_for_overlay, detections)
+                                    st.image(annotated, caption="Bone fracture localization", width="stretch")
+                                except Exception as overlay_error:
+                                    st.warning(f"Could not render fracture overlay: {overlay_error}")
+                            else:
+                                st.success("No fracture bounding boxes were returned by the YOLO model.")
                         
                         # Streamlit native progress bar for confidence
                         st.progress(result["confidence"])

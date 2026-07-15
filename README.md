@@ -7,7 +7,7 @@ MediScan is a medical imaging classification project that provides an initial au
 - Chest disease classification from CT
 - Breast cancer analysis from ultrasound
 - Kidney condition detection from CT
-- Bone fracture detection from X-ray
+- Bone fracture detection from X-ray with fracture localization
 
 ## Project Layout
 Each model now lives in its own folder with a standard layout:
@@ -81,6 +81,8 @@ Each folder has a `train.py` script and a Kaggle-ready `train.ipynb` notebook th
 - the discovered class order as `classes.json`
 - benchmark results as `best_<name>_model_benchmark.csv`
 - architecture metadata as `best_<name>_model_metadata.json`
+
+For the bone model, the backend also returns YOLO bounding boxes and a human-readable image region so the Streamlit UI can highlight where the fracture appears without changing the brain, breast, chest, or kidney models.
 
 The benchmark compares:
 - CNN baseline
