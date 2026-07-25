@@ -1,0 +1,37 @@
+databases:
+  - name: mediscan-db
+    plan: starter
+
+services:
+  - name: mediscan-backend
+    type: web
+    runtime: docker
+    dockerfilePath: Dockerfile.backend
+    dockerContext: .
+    plan: starter
+    autoDeployTrigger: commit
+    envVars:
+      - key: HF_MODEL_REPO
+        value: vedk08/MediScan-Models
+      - key: HF_TOKEN
+        sync: false
+      - key: MODEL_CACHE_DIR
+        value: /tmp/models
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mediscan-db
+          property: connectionString
+
+  - name: mediscan-frontend
+    type: web
+    runtime: docker
+    dockerfilePath: Dockerfile.frontend
+    dockerContext: .
+    plan: starter
+    autoDeployTrigger: commit
+    envVars:
+      - key: BACKEND_HOSTPORT
+        fromService:
+          type: web
+          name: mediscan-backend
+          property: hostport

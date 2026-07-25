@@ -1,20 +1,29 @@
 import io
+import os
 import torch
 import timm
 from PIL import Image
 from torchvision import transforms
 from pathlib import Path
 
+from utils.hf_model_loader import get_model_path
+
 CLASSES = ["adenocarcinoma", "large.cell.carcinoma", "normal", "squamous.cell.carcinoma"]
 MODEL_FILENAME = Path(__file__).with_name("best_chest_model.pth")
 
 def load_model(model_path=None, device=None):
     device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_path = model_path or MODEL_FILENAME
+    model_path = model_path or get_model_path(
+        MODEL_FILENAME,
+        hf_repo=os.getenv("HF_MODEL_REPO", ""),
+        filename=MODEL_FILENAME.name,
+    )
+    if model_path is None:
+        raise FileNotFoundError("Chest model weights are missing and HF_MODEL_REPO is not configured.")
     
     model = timm.create_model('tf_efficientnetv2_b0', pretrained=False, num_classes=len(CLASSES))
     
-    state_dict = torch.load(model_path, map_location=device)
+    state_dict = torch.load(Path(model_path), map_location=device)
     model.load_state_dict(state_dict)
     model.to(device)
     model.eval()

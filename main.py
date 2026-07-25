@@ -1,6 +1,7 @@
 from datetime import datetime
 import csv
 import io
+import os
 import time
 from typing import Any, Optional
 
@@ -119,4 +120,5 @@ def export_predictions_csv(limit: int = Query(500, ge=1, le=5000)):
     return Response(content=buffer.getvalue(), media_type="text/csv", headers=headers)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", "8000"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

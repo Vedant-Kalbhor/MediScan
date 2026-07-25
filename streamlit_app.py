@@ -206,6 +206,18 @@ def is_normal_prediction(model_type, predicted_class):
     return predicted in normal_labels
 
 
+def resolve_backend_url():
+    backend_url = os.getenv("BACKEND_URL")
+    if backend_url:
+        return backend_url.rstrip("/")
+
+    backend_hostport = os.getenv("BACKEND_HOSTPORT")
+    if backend_hostport:
+        return f"http://{backend_hostport}"
+
+    return "http://127.0.0.1:8000"
+
+
 def fetch_predictions(backend_url, limit=100):
     response = requests.get(f"{backend_url}/predictions", params={"limit": limit}, timeout=30)
     response.raise_for_status()
@@ -355,7 +367,7 @@ st.markdown("---")
 with st.sidebar:
     st.markdown("### ⚙️ Diagnostic Hub")
     app_mode = st.selectbox("Workspace:", ["Analyzer", "Admin Dashboard"])
-    backend_url = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+    backend_url = resolve_backend_url()
 
     if app_mode == "Analyzer":
         selected_name = st.selectbox(
@@ -427,7 +439,7 @@ with col2:
             
             files = {"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)}
             params = {"model_type": model_type}
-            backend_url = os.getenv("BACKEND_URL", "http://127.0.0.1:8000")
+            backend_url = resolve_backend_url()
             
             with st.spinner("Decoding scan and propagating through neural layers..."):
                 try:

@@ -16,3 +16,4 @@ psycopg2-binary
 torch
 torchvision
 timm
+huggingface_hub

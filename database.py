@@ -22,7 +22,7 @@ def _normalize_database_url(url: str) -> str:
 
 
 DATABASE_URL = _normalize_database_url(
-    os.getenv("DATABASE_URL", "sqlite:///./mediscan.db")
+    os.getenv("DATABASE_URL") or "sqlite:///./mediscan.db"
 )
 
 

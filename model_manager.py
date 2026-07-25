@@ -5,6 +5,7 @@ import tempfile
 from urllib.request import urlopen
 
 from config import DEVICE, MODELS_CONFIG, MODEL_URL_ENV_MAP, KIDNEY_MODEL_URL
+from utils.hf_model_loader import get_model_path
 
 class ModelManager:
     def __init__(self):
@@ -39,6 +40,20 @@ class ModelManager:
         model_path = self._resolve_path(config["model_path"])
         if model_path.exists():
             return model_path
+
+        hf_repo = os.getenv("HF_MODEL_REPO", "").strip()
+        hf_token = os.getenv("HF_TOKEN", "").strip() or None
+        cache_dir = os.getenv("MODEL_CACHE_DIR", "").strip() or None
+
+        downloaded_path = get_model_path(
+            model_path,
+            hf_repo=hf_repo,
+            filename=Path(config["model_path"]).name,
+            cache_dir=cache_dir,
+            token=hf_token,
+        )
+        if downloaded_path is not None:
+            return downloaded_path
 
         url_env = MODEL_URL_ENV_MAP.get(model_type)
         default_url = KIDNEY_MODEL_URL if model_type == "kidney" else ""
