@@ -192,6 +192,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- Helper Functions ---
+BACKEND_REQUEST_TIMEOUT = (10, 240)
+
 def normalize_label(value):
     return re.sub(r"[^a-z0-9]+", "", value.lower())
 
@@ -219,7 +221,11 @@ def resolve_backend_url():
 
 
 def fetch_predictions(backend_url, limit=100):
-    response = requests.get(f"{backend_url}/predictions", params={"limit": limit}, timeout=30)
+    response = requests.get(
+        f"{backend_url}/predictions",
+        params={"limit": limit},
+        timeout=BACKEND_REQUEST_TIMEOUT,
+    )
     response.raise_for_status()
     return response.json()
 
@@ -311,7 +317,7 @@ def render_dashboard(backend_url):
         export_response = requests.get(
             f"{backend_url}/predictions/export",
             params={"limit": limit},
-            timeout=30,
+            timeout=BACKEND_REQUEST_TIMEOUT,
         )
         export_response.raise_for_status()
         st.download_button(
@@ -443,7 +449,12 @@ with col2:
             
             with st.spinner("Decoding scan and propagating through neural layers..."):
                 try:
-                    response = requests.post(f"{backend_url}/predict", files=files, params=params, timeout=60)
+                    response = requests.post(
+                        f"{backend_url}/predict",
+                        files=files,
+                        params=params,
+                        timeout=BACKEND_REQUEST_TIMEOUT,
+                    )
                     
                     if response.status_code == 200:
                         result = response.json()
