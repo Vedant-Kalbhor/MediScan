@@ -1,7 +1,10 @@
+from collections import OrderedDict
 from pathlib import Path
 import os
+import gc
 import shutil
 import tempfile
+import threading
 from urllib.request import urlopen
 
 from config import DEVICE, MODELS_CONFIG, MODEL_URL_ENV_MAP, KIDNEY_MODEL_URL
@@ -9,8 +12,10 @@ from utils.hf_model_loader import get_model_path
 
 class ModelManager:
     def __init__(self):
-        self.models = {}
+        self.models = OrderedDict()
         self.base_dir = Path(__file__).resolve().parent
+        self.max_loaded_models = max(1, int(os.getenv("MAX_LOADED_MODELS", "1")))
+        self._lock = threading.RLock()
 
     def _resolve_path(self, relative_path):
         path = Path(relative_path)
@@ -67,12 +72,37 @@ class ModelManager:
             return model_path
         return None
 
+    def _store_model(self, model_type, model) -> None:
+        with self._lock:
+            existing = self.models.pop(model_type, None)
+            if existing is not None:
+                del existing
+
+            while len(self.models) >= self.max_loaded_models:
+                _, old_model = self.models.popitem(last=False)
+                del old_model
+
+            self.models[model_type] = model
+            self.models.move_to_end(model_type)
+
+            gc.collect()
+            try:
+                import torch
+
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                pass
+
     def get_model(self, model_type):
         if model_type not in MODELS_CONFIG:
             raise ValueError(f"Unknown model type: {model_type}")
 
-        if model_type in self.models:
-            return self.models[model_type]
+        with self._lock:
+            cached_model = self.models.get(model_type)
+            if cached_model is not None:
+                self.models.move_to_end(model_type)
+                return cached_model
 
         config = MODELS_CONFIG[model_type]
         model_path = self.ensure_model_file(model_type)
@@ -82,20 +112,17 @@ class ModelManager:
         print(f"Loading model: {model_type} from {model_path}...")
         
         try:
-            import io
             import torch
-            import torch.nn as nn
-            import torchvision.models as models
-            import timm
-
-            from PIL import Image
-
-            from torchvision import transforms
-
-            try:
-                from ultralytics import YOLO
-            except ImportError:
-                YOLO = None
+            if model_type in {"brain", "breast", "kidney"}:
+                import torch.nn as nn
+                import torchvision.models as models
+            if model_type == "chest":
+                import timm
+            if model_type == "bone":
+                try:
+                    from ultralytics import YOLO
+                except ImportError:
+                    YOLO = None
 
             if model_type == "brain":
                 # DenseNet121
@@ -103,9 +130,10 @@ class ModelManager:
                 model.classifier = nn.Linear(model.classifier.in_features, len(config["classes"]))
                 state_dict = torch.load(model_path, map_location=DEVICE)
                 model.load_state_dict(state_dict)
+                del state_dict
                 model.to(DEVICE)
                 model.eval()
-                self.models[model_type] = model
+                self._store_model(model_type, model)
                 
             elif model_type == "breast":
                 # ResNet18
@@ -113,18 +141,20 @@ class ModelManager:
                 model.fc = nn.Linear(model.fc.in_features, len(config["classes"]))
                 state_dict = torch.load(model_path, map_location=DEVICE)
                 model.load_state_dict(state_dict)
+                del state_dict
                 model.to(DEVICE)
                 model.eval()
-                self.models[model_type] = model
+                self._store_model(model_type, model)
                 
             elif model_type == "chest":
                 # tf_efficientnetv2_b0
                 model = timm.create_model('tf_efficientnetv2_b0', pretrained=False, num_classes=len(config["classes"]))
                 state_dict = torch.load(model_path, map_location=DEVICE)
                 model.load_state_dict(state_dict)
+                del state_dict
                 model.to(DEVICE)
                 model.eval()
-                self.models[model_type] = model
+                self._store_model(model_type, model)
                 
             elif model_type == "kidney":
                 # ResNet18
@@ -132,9 +162,10 @@ class ModelManager:
                 model.fc = nn.Linear(model.fc.in_features, len(config["classes"]))
                 state_dict = torch.load(model_path, map_location=DEVICE)
                 model.load_state_dict(state_dict)
+                del state_dict
                 model.to(DEVICE)
                 model.eval()
-                self.models[model_type] = model
+                self._store_model(model_type, model)
                 
             elif model_type == "bone":
                 # YOLOv8
@@ -142,13 +173,14 @@ class ModelManager:
                     print("Warning: ultralytics is not installed.")
                     return None
                 model = YOLO(str(model_path))
-                self.models[model_type] = model
+                self._store_model(model_type, model)
                 
         except Exception as e:
             print(f"Error loading model {model_type}: {e}")
             return None
             
-        return self.models.get(model_type)
+        with self._lock:
+            return self.models.get(model_type)
 
     def predict(self, model_type, image_bytes):
         model = self.get_model(model_type)
@@ -161,7 +193,6 @@ class ModelManager:
             import io
             import torch
             from PIL import Image
-            from torchvision import transforms
 
             device = torch.device(DEVICE if DEVICE == "cpu" else ("cuda" if torch.cuda.is_available() else "cpu"))
 
@@ -239,6 +270,8 @@ class ModelManager:
                 
             else:
                 # Classification prediction logic
+                from torchvision import transforms
+
                 transform = transforms.Compose([
                     transforms.Resize((224, 224)),
                     transforms.ToTensor(),

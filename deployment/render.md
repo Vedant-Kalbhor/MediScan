@@ -28,7 +28,7 @@ First prediction request triggers model load
 Model file is resolved locally or downloaded from Hugging Face
     |
     v
-Model stays cached in memory
+Only the most recent model stays cached in memory
     |
     v
 Prediction is written to SQLite or PostgreSQL
@@ -94,6 +94,6 @@ The compose file uses SQLite in a mounted volume for the backend database.
 
 ## Notes
 
-- The backend loads each model on first use and caches it in memory.
+- The backend loads each model on first use and keeps only the most recently used model cached in memory to stay within hosted memory limits.
 - Local runs still use the checked-in model files when they are present.
 - Docker is only needed for container deployments or compose-based testing.

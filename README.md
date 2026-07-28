@@ -136,7 +136,7 @@ Render
     |
     +--> Hugging Face provides model weights if local files are absent
     |
-    +--> Loaded models are cached in memory
+    +--> The most recently used model is cached in memory
     |
     +--> Inference results are stored in SQLite or PostgreSQL
     |
@@ -162,6 +162,7 @@ Environment variables used by the deployment loader:
 - `HF_MODEL_REPO` points to the Hugging Face repo
 - `HF_TOKEN` is only needed if the repo is private
 - `MODEL_CACHE_DIR` controls where downloaded weights are cached
+- `MAX_LOADED_MODELS` caps how many models stay resident in RAM at once; the Render blueprint sets this to `1`
 
 ## Docker Usage
 
@@ -202,6 +203,7 @@ Blueprint flow:
 2. Apply `render.yaml`.
 3. Provide `HF_TOKEN` if your Hugging Face repo is private.
 4. Let Render create the PostgreSQL database and the two web services.
+5. The backend service runs on a `standard` Render plan so Torch inference has more room than the smallest tier.
 
 Manual flow:
 
@@ -211,6 +213,7 @@ Manual flow:
 4. Point `DATABASE_URL` to your Render PostgreSQL connection string.
 5. Create a frontend Web Service from `Dockerfile.frontend`.
 6. Set `BACKEND_HOSTPORT` or `BACKEND_URL` so Streamlit can call FastAPI.
+7. Keep `MAX_LOADED_MODELS=1` on the backend if you want to cap RAM usage as tightly as possible.
 
 For a step-by-step version, see [`deployment/render.md`](./deployment/render.md).
 

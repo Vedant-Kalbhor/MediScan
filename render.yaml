@@ -8,13 +8,15 @@ services:
     runtime: docker
     dockerfilePath: Dockerfile.backend
     dockerContext: .
-    plan: starter
+    plan: standard
     autoDeployTrigger: commit
     envVars:
       - key: HF_MODEL_REPO
         value: vedk08/MediScan-Models
       - key: HF_TOKEN
         sync: false
+      - key: MAX_LOADED_MODELS
+        value: "1"
       - key: MODEL_CACHE_DIR
         value: /tmp/models
       - key: DATABASE_URL
