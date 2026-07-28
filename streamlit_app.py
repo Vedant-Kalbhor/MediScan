@@ -265,7 +265,7 @@ def draw_bone_detections(image, detections):
 
 def render_dashboard(backend_url):
     st.markdown("## 📊 Prediction Analytics Dashboard")
-    st.caption("View stored prediction history coming from PostgreSQL.")
+    st.caption("View stored prediction history coming from DB.")
 
     col_a, col_b = st.columns([1, 1])
     with col_a:
@@ -402,7 +402,7 @@ with st.sidebar:
     else:
         st.markdown("#### Database Notes")
         st.info(
-            "This view reads the stored prediction history from PostgreSQL and shows analytics "
+            "This view reads the stored prediction history from SQLite and shows analytics "
             "for the latest inference runs."
         )
 

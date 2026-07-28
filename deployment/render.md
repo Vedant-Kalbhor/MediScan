@@ -58,7 +58,7 @@ It provisions:
 
 - a backend web service
 - a frontend web service
-- a PostgreSQL database
+- a PostgreSQL / SQLite database
 
 The frontend uses `BACKEND_HOSTPORT` so it can talk to the backend on Render's private network without hardcoding a public URL.
 

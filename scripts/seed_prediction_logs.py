@@ -1,4 +1,4 @@
-"""Seed sample MediScan prediction rows into PostgreSQL or local SQLite.
+"""Seed sample MediScan prediction rows into PostgreSQL or SQLite.
 
 Usage:
     python scripts/seed_prediction_logs.py
